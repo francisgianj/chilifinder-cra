@@ -1,7 +1,7 @@
 import { BsX } from "react-icons/bs";
 import { AnimatePresence, motion } from "framer-motion";
 import { atom, useAtom } from "jotai";
-import ChiliDescription from "./descriptions/ChiliDescription"
+import ChiliDescription from "./descriptions/ChiliDescription";
 
 interface ResultProps {
   label?: string;
@@ -73,7 +73,7 @@ export default function Results({ results }: { results: ResultProps[] }) {
                         src={URL.createObjectURL(
                           results[Number(selectedResultId)].imageFile
                         )}
-                        alt="image"
+                        alt="chili"
                         sizes="100%"
                       />
                     </div>
@@ -101,39 +101,55 @@ function Result({
   isProcessing,
   timeInference,
   probability,
-  imageFile,
   imageUrl,
 }: ResultProps) {
-  const [_selectedResultId, setSelectedResultId] =
-    useAtom(selectedResultIdAtom);
+  const [_, setSelectedResultId] = useAtom(selectedResultIdAtom);
+
+  const isChili = probability && probability >= 0.8;
+
+  const handleClick = () => {
+    // Only allow clicking if it's a chili
+    if (isChili) {
+      setSelectedResultId(idx);
+    }
+  };
 
   return (
     <AnimatePresence initial={false}>
       <motion.div
         layoutId={idx}
-        onClick={() => setSelectedResultId(idx)}
+        onClick={handleClick}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         whileHover={{ scale: 1.05 }}
-        className="cursor-pointer rounded-lg overflow-hidden bg-white drop-shadow-lg border border-gray-300/20"
+        className={`cursor-pointer rounded-lg overflow-hidden bg-white drop-shadow-lg border ${
+          isChili ? "border-gray-300/20" : "border-red-500"
+        }`}
       >
         <motion.div className="relative w-56 h-56 bg-white">
-          <img src={imageUrl} alt="image" sizes="100%" />
+          {/* Set a fixed size for the image container */}
+          <div
+            className="w-full h-full overflow-hidden"
+          >
+            <img
+              src={imageUrl}
+              alt="chili"
+              style={{ width: "100%", height: "100%" }}
+            />
+          </div>
         </motion.div>
 
         <motion.div className="p-2 space-y-1">
-          <motion.p className="text-lg">
-            {isProcessing ? "Predicting..." : label}
-          </motion.p>
-
-          {isProcessing ? (
+          {!isChili ? (
             <>
-              <motion.div className="animate-pulse bg-gray-500 h-4 w-3/4 rounded-sm" />
-              <motion.div className="animate-pulse bg-gray-500 h-4 w-1/2 rounded-sm" />
+              <motion.p className="text-sm text-red-500">Not a chili</motion.p>
             </>
           ) : (
             <>
+              <motion.p className="text-lg">
+                {isProcessing ? "Predicting..." : label}
+              </motion.p>
               <motion.p className="text-sm text-gray-500">
                 {probability?.toFixed(2)}% probability
               </motion.p>

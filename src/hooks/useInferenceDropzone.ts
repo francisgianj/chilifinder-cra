@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import preprocessImage from "../utils/preprocess-image";
 import loadImage from "../utils/load-image";
 import { atom, useAtom } from "jotai";
@@ -46,45 +46,55 @@ const loadableModelAtom = loadable(asyncModelAtom);
 
 export const resultsAtom = atom<Result[]>([]);
 
+// ... (imports and enums)
+
 export default function useInferenceDropzone() {
   const [modelAtom] = useAtom(loadableModelAtom);
   const [results, setResults] = useAtom(resultsAtom);
+  const [isInferenceInProgress, setIsInferenceInProgress] = useState(false);
 
   const isModelLoading =
     modelAtom.state === "loading" || modelAtom.state !== "hasData";
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
-      if (isModelLoading || !acceptedFiles?.length) return;
+      if (isModelLoading || !acceptedFiles?.length || isInferenceInProgress)
+        return;
 
-      // Do something with the files
+      setIsInferenceInProgress(true);
+
       const image = acceptedFiles[0];
 
-      const start = performance.now();
+      try {
+        const start = performance.now();
 
-      const img = await loadImage(image);
-      const processedImg = await preprocessImage(img);
+        const img = await loadImage(image);
+        const processedImg = await preprocessImage(img);
 
-      if (!modelAtom?.data || !processedImg) return;
+        if (!modelAtom?.data || !processedImg) return;
 
-      const model = modelAtom.data.model;
-      const prediction = model.predict(processedImg) as tf.Tensor<tf.Rank>;
-      const predictedClassIndex = tf.argMax(prediction, -1).dataSync()[0];
-      const timeInference = performance.now() - start;
+        const model = modelAtom.data.model;
+        const prediction = model.predict(processedImg) as tf.Tensor<tf.Rank>;
+        const predictedClassIndex = tf.argMax(prediction, -1).dataSync()[0];
+        const timeInference = performance.now() - start;
 
-      const newResult: Result = {
-        isProcessing: false,
-        imageFile: image,
-        imageUrl: URL.createObjectURL(image),
-        label: LABEL_MAPPER[predictedClassIndex],
-        probability: prediction.dataSync()[predictedClassIndex],
-        timeInference,
-      };
+        const newResult: Result = {
+          isProcessing: false,
+          imageFile: image,
+          imageUrl: URL.createObjectURL(image),
+          label: LABEL_MAPPER[predictedClassIndex],
+          probability: prediction.dataSync()[predictedClassIndex],
+          timeInference,
+        };
 
-      setResults([newResult, ...results]);
+        setResults([newResult, ...results]);
+      } catch (error) {
+        console.error("Error during inference:", error);
+      } finally {
+        setIsInferenceInProgress(false);
+      }
     },
-
-    [isModelLoading, modelAtom, setResults, results]
+    [isModelLoading, modelAtom, setResults, results, isInferenceInProgress]
   );
 
   return {
