@@ -58,7 +58,7 @@ registerRoute(
 registerRoute(
   // Add in any other file extensions or routing criteria as needed.
   ({ url }) =>
-    url.origin === `${self.location.origin}/images` && url.pathname.endsWith(".jpg"),
+    url.origin === self.location.origin && url.pathname.endsWith(".jpg"),
   // Customize this strategy as needed, e.g., by changing to CacheFirst.
   new CacheFirst({
     cacheName: "images",
@@ -79,19 +79,18 @@ self.addEventListener("message", (event) => {
 });
 
 // Any other custom service worker logic can go here.
-const modelFiles = [
-  "/static/model-tfjs/model.json?v=1.1.0",
-  "/static/model-tfjs/group1-shard1of4.bin?v=1.1.0",
-  "/static/model-tfjs/group1-shard2of4.bin?v=1.1.0",
-  "/static/model-tfjs/group1-shard3of4.bin?v=1.1.0",
-  "/static/model-tfjs/group1-shard4of4.bin?v=1.1.0",
-  // Add more files if necessary
-];
-
-
-precacheAndRoute(modelFiles);
 
 registerRoute(
-  ({ url }) => url.pathname.endsWith(".json") || url.pathname.endsWith(".bin"),
-  new CacheFirst()
+  // Add in any other file extensions or routing criteria as needed.
+  ({ url }) =>
+    url.origin === self.location.origin && (url.pathname.endsWith(".json") || url.pathname.endsWith(".bin")),
+  // Customize this strategy as needed, e.g., by changing to CacheFirst.
+  new CacheFirst({
+    cacheName: "model-tfjs",
+    plugins: [
+      // Ensure that once this runtime cache reaches a maximum size the
+      // least-recently used images are removed.
+      new ExpirationPlugin({ maxEntries: 50 }),
+    ],
+  })
 );
